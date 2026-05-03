@@ -1,0 +1,48 @@
+services:
+  transcriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: transcriber:latest
+    container_name: transcriber
+    ports:
+      - "8000:8000"
+
+    environment:
+      # опционально: HuggingFace токен для больших лимитов и закрытых моделей
+      - HF_TOKEN=${HF_TOKEN:-}
+
+    volumes:
+      # постоянное хранилище моделей
+      # все модели качаются сюда при первом старте (из config.yml)
+      # переживает перезапуски и пересборки — не перекачивается
+      - models:/models
+
+      # кэш HuggingFace моделей (веса Whisper и тд)
+      - hf_cache:/cache/huggingface
+
+      # горячая перезагрузка конфига: меняй config.yml без пересборки
+      - ./config.yml:/app/config.yml:ro
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    restart: unless-stopped
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+volumes:
+  # именованные volume — управляются Docker, не видны как папки хоста
+  models:
+    driver: local
+  hf_cache:
+    driver: local

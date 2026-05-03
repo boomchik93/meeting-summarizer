@@ -1,0 +1,45 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Транскрибатор — основной конфиг
+# Docker читает это при старте и качает все нужные модели
+# Папки создавать не надо — все само управляется
+# ══════════════════════════════════════════════════════════════════════════════
+
+server:
+  port: 8000
+  workers: 1
+  log_level: info
+
+# Whisper (распознавание речи)
+whisper:
+  # основная модель: HuggingFace дообученная на русской зашумленной речи
+  hf_model: "bond005/whisper-podlodka-turbo"
+  use_hf_model: true
+
+  # бэкап модель (faster-whisper) если HF сдохнет или use_hf_model=false
+  # варианты: tiny | base | small | medium | large-v3
+  fallback_model: "large-v3"
+
+# LLM (суммаризация встреч)
+llm:
+  enabled: true
+
+  # GGUF модель для скачивания с HuggingFace
+  # repo:     ID репозитория HuggingFace
+  # filename: точное имя файла в репе
+  # local:    путь внутри volume где сохранится
+  model:
+    repo: "bartowski/Qwen2.5-7B-Instruct-GGUF"
+    filename: "Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+    local: "/models/qwen/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+
+  # настройки инференса
+  n_ctx: 32768
+  n_threads: 4          # потоки CPU
+  n_gpu_layers: -1      # -1 = все слои на GPU
+
+# Resemblyzer (диаризация спикеров)
+# pretrained.pt уже в образе (крошечный, 17MB)
+# download: true только если хочешь принудительно перекачать с HuggingFace
+resemblyzer:
+  download: false
+  local: "/models/resemblyzer/pretrained.pt"

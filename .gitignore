@@ -1,0 +1,39 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Virtual environment (not needed — project runs in Docker) ─────────────────
+venv/
+.venv/
+env/
+
+# ── Environment overrides ─────────────────────────────────────────────────────
+.env
+
+# ── Models (downloaded automatically by Docker into named volumes) ────────────
+# Keep: models/resemblyzer/pretrained.pt (bundled into the image)
+models/whisper/
+models/qwen/
+
+# ── HuggingFace / runtime cache ───────────────────────────────────────────────
+.cache/
+
+# ── Docker build artifacts ────────────────────────────────────────────────────
+# (docker compose creates these on the host if you ever bind-mount)
+*.log
+
+# ── Runtime output ────────────────────────────────────────────────────────────
+transcription_*.json
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

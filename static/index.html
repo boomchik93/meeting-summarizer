@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Транскрибатор</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙</text></svg>" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3a;
+      --accent:  #6c63ff;
+      --accent2: #a78bfa;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --green:   #22c55e;
+      --red:     #ef4444;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; }
+    header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    header h1 span { color: var(--accent2); }
+    header p  { color: var(--muted); margin-top: 6px; font-size: 14px; }
+
+    /* ── Status badge ── */
+    #status-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .badge.ok .dot  { background: var(--green); }
+    .badge.ok       { color: var(--text); }
+    .badge.err .dot { background: var(--red); }
+
+    /* ── Drop zone ── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    #drop-zone:hover,
+    #drop-zone.over { border-color: var(--accent); background: #1e1b3a; }
+    #drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    #drop-zone .icon { font-size: 40px; margin-bottom: 12px; }
+    #drop-zone p     { color: var(--muted); font-size: 14px; }
+    #drop-zone strong { color: var(--text); font-size: 16px; display: block; margin-bottom: 6px; }
+
+    /* ── File chip ── */
+    #file-chip {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+    #file-chip.show { display: flex; }
+    #file-chip .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #file-chip .remove {
+      cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1;
+      transition: color .15s;
+    }
+    #file-chip .remove:hover { color: var(--red); }
+
+    /* ── Button ── */
+    #run-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+    }
+    #run-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    #run-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* ── Progress ── */
+    #progress {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--muted);
+    }
+    #progress.show { display: flex; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    #error-box {
+      display: none;
+      background: #2a1515;
+      border: 1px solid #5a2020;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      color: #fca5a5;
+      font-size: 14px;
+    }
+    #error-box.show { display: block; }
+
+    /* ── Results ── */
+    #results { display: none; flex-direction: column; gap: 16px; }
+    #results.show { display: flex; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .card-body { padding: 18px; }
+
+    /* meta row */
+    .meta { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; }
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-item .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .meta-item .value { color: var(--text); font-weight: 500; }
+
+    /* speakers */
+    .speaker-list { display: flex; flex-direction: column; gap: 10px; }
+    .speaker-item {
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      background: #12141e;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .speaker-item .sp-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent2);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+
+    /* segments table */
+    .seg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .seg-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .seg-table td { padding: 8px 10px; border-bottom: 1px solid #1e2130; vertical-align: top; }
+    .seg-table tr:last-child td { border-bottom: none; }
+    .seg-table .time { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .seg-table .sp   { color: var(--accent2); font-weight: 600; white-space: nowrap; }
+
+    /* json */
+    .json-block {
+      background: #0d0f18;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+      overflow: auto;
+      max-height: 360px;
+      white-space: pre;
+    }
+
+    /* download btn */
+    .dl-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .dl-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+    /* speaker color palette */
+    .sp-0 { border-left-color: #6c63ff; }
+    .sp-1 { border-left-color: #22c55e; }
+    .sp-2 { border-left-color: #f59e0b; }
+    .sp-3 { border-left-color: #ef4444; }
+    .sp-4 { border-left-color: #06b6d4; }
+    .sp-5 { border-left-color: #ec4899; }
+
+    /* ── Summary ── */
+    .summary-section {
+      margin-bottom: 24px;
+    }
+    .summary-section:last-child {
+      margin-bottom: 0;
+    }
+    .summary-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      background: #12141e;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border-left: 3px solid var(--accent2);
+    }
+    .summary-topics { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
+    }
+    .summary-topic-block {
+      background: #12141e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border-left: 3px solid var(--accent);
+    }
+    .summary-topic-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .summary-topic-title .topic-num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 1px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+    .summary-points {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .summary-points li {
+      display: flex;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .summary-points li::before {
+      content: "•";
+      color: var(--accent2);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .summary-item {
+      background: #12141e;
+      border-radius: 8px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--accent2);
+    }
+    .summary-item.risk-item {
+      border-left-color: var(--red);
+    }
+    .summary-item-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .summary-item-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .summary-item-meta {
+      font-size: 12px;
+      color: var(--accent2);
+      margin-top: 4px;
+    }
+    .summary-key-points {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .summary-key-points li {
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+      background: #12141e;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border-left: 3px solid var(--green);
+    }
+    .summary-key-points li::before {
+      content: "💡";
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>🎙 <span>Транскрибатор</span></h1>
+    <p>Локальное распознавание речи с разделением по спикерам</p>
+  </header>
+
+  <div id="status-bar">
+    <div class="badge" id="badge-whisper"><span class="dot"></span> Whisper</div>
+    <div class="badge" id="badge-diar"><span class="dot"></span> Диаризация</div>
+    <div class="badge" id="badge-model"><span class="dot"></span> Модель: —</div>
+    <div class="badge" id="badge-llm"><span class="dot"></span> LLM: —</div>
+  </div>
+
+  <div id="drop-zone">
+    <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.ogg,.flac,.webm" />
+    <div class="icon">📂</div>
+    <strong>Перетащите аудио файл или нажмите для выбора</strong>
+    <p>MP3 · WAV · M4A · OGG · FLAC · WEBM</p>
+  </div>
+
+  <div id="file-chip">
+    <span>🎵</span>
+    <span class="name" id="chip-name"></span>
+    <span class="remove" id="chip-remove" title="Убрать">✕</span>
+  </div>
+
+  <button id="run-btn" disabled>Распознать</button>
+
+  <div id="progress">
+    <div class="spinner"></div>
+    <span id="progress-text">Обработка…</span>
+  </div>
+
+  <div id="error-box"></div>
+
+  <div id="results">
+
+    <div class="card">
+      <div class="card-header">Информация</div>
+      <div class="card-body">
+        <div class="meta" id="meta-row"></div>
+      </div>
+    </div>
+
+    <div class="card" id="speakers-card">
+      <div class="card-header">Спикеры</div>
+      <div class="card-body">
+        <div class="speaker-list" id="speaker-list"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        Сегменты
+        <span id="seg-count" style="font-weight:400;color:var(--muted)"></span>
+      </div>
+      <div class="card-body" style="padding:0;overflow:auto;max-height:400px">
+        <table class="seg-table">
+          <thead>
+            <tr>
+              <th>Начало</th><th>Конец</th><th>Спикер</th><th>Текст</th>
+            </tr>
+          </thead>
+          <tbody id="seg-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        JSON
+        <button class="dl-btn" id="dl-btn">⬇ Скачать</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="json-block" id="json-block"></div>
+      </div>
+    </div>
+
+    <!-- ── Summary card ── -->
+    <div class="card" id="summary-card" style="display:none">
+      <div class="card-header">
+        📋 Пересказ разговора
+        <button class="dl-btn" id="summary-btn">✨ Составить пересказ</button>
+      </div>
+      <div class="card-body">
+        <div id="summary-progress" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:14px">
+          <div class="spinner" style="margin:0 auto 12px"></div>
+          Qwen2.5 анализирует разговор…
+        </div>
+        <div id="summary-error" style="display:none;color:#fca5a5;font-size:14px;padding:8px 0"></div>
+        <div id="summary-content"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
