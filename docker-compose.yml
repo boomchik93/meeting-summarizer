@@ -6,11 +6,13 @@ services:
     image: transcriber:latest
     container_name: transcriber
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
 
     environment:
       # опционально: HuggingFace токен для больших лимитов и закрытых моделей
       - HF_TOKEN=${HF_TOKEN:-}
+      # LLM на CPU чтобы освободить GPU для Whisper
+      - LLM_N_GPU_LAYERS=0
 
     volumes:
       # постоянное хранилище моделей

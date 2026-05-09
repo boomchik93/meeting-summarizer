@@ -114,7 +114,7 @@ USER appuser
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"
+HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=5 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=25)"
 
 ENTRYPOINT ["/entrypoint.sh"]

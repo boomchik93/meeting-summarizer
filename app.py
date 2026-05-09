@@ -466,6 +466,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 ALLOWED_EXT = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".webm"}
@@ -492,17 +493,25 @@ async def health():
 
 @app.post("/api/transcribe")
 async def api_transcribe(file: UploadFile = File(...)):
+    print(f"[api] Получен файл: {file.filename}, размер: {file.size if hasattr(file, 'size') else 'unknown'}")
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(400, f"Unsupported format '{ext}'. Allowed: {', '.join(ALLOWED_EXT)}")
 
+    print(f"[api] Читаем файл в память...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        tmp.write(await file.read())
+        content = await file.read()
+        print(f"[api] Прочитано {len(content)} байт")
+        tmp.write(content)
         tmp_path = tmp.name
+    print(f"[api] Файл сохранен в {tmp_path}")
 
     try:
+        print(f"[api] Начинаем транскрибацию...")
         data = transcribe(tmp_path)
+        print(f"[api] Транскрибация завершена")
     except Exception as e:
+        print(f"[api] Ошибка транскрибации: {e}")
         raise HTTPException(500, str(e))
     finally:
         os.unlink(tmp_path)
@@ -558,4 +567,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        limit_concurrency=10,
+        limit_max_requests=1000,
+        timeout_keep_alive=300,
+    )

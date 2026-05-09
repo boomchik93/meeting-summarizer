@@ -35,7 +35,7 @@ llm:
   # настройки инференса
   n_ctx: 32768
   n_threads: 4          # потоки CPU
-  n_gpu_layers: -1      # -1 = все слои на GPU
+  n_gpu_layers: 0       # 0 = CPU only, освобождаем GPU для Whisper
 
 # Resemblyzer (диаризация спикеров)
 # pretrained.pt уже в образе (крошечный, 17MB)

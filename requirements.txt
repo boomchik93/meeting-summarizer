@@ -1,23 +1,13 @@
-# веб фреймворк
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 aiofiles==23.2.1
-
-# PyTorch — ставится отдельно в Dockerfile (CUDA 12.1 wheel, torch==2.4.1)
-
-# Whisper и транскрибация
 faster-whisper==1.1.1
 transformers==4.46.3
 accelerate==0.34.2
 ctranslate2>=4.4.0
-
-# диаризация спикеров и обработка аудио
 resemblyzer>=0.1.4
 scipy>=1.11.0
-
-# NumPy — должен быть <2.0 (ctranslate2/resemblyzer скомпилированы против NumPy 1.x)
 numpy>=1.24.0,<2.0
 
-# разное
 setuptools
